@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from app.api.stock import router as stock_router
 
 app = FastAPI(
     title="Trading AI Assistant",
@@ -6,14 +7,14 @@ app = FastAPI(
     description="AI-powered Trading Assistant Backend"
 )
 
+app.include_router(stock_router)
+
+
 @app.get("/")
-async def root():
-    return {
-        "message": "Welcome to Trading AI Assistant 🚀"
-    }
+def root():
+    return {"message": "Welcome to Trading AI Assistant 🚀"}
+
 
 @app.get("/health")
-async def health():
-    return {
-        "status": "healthy"
-    }
+def health():
+    return {"status": "healthy"}
