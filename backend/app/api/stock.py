@@ -1,6 +1,15 @@
 from fastapi import APIRouter
 from app.services.market_data import MarketDataService
 from app.schemas.stock import EMAResponse
+from app.schemas.stock import EMAResponse, RSIResponse
+from app.schemas.stock import (
+    EMAResponse,
+    RSIResponse,
+    AnalysisResponse,
+    MACDResponse,
+)
+
+from app.services.indicator_service import IndicatorService
 
 router = APIRouter(
     prefix="/stock",
@@ -44,5 +53,28 @@ def get_ema(
     return MarketDataService.get_ema(
         symbol,
         period,
+        interval,
+    )
+@router.get("/{symbol}/rsi", response_model=RSIResponse)
+def get_rsi(
+    symbol: str,
+    period: int = 14,
+    interval: str = "1d",
+):
+    return MarketDataService.get_rsi(
+        symbol,
+        period,
+        interval,
+    )
+@router.get("/{symbol}/analyze", response_model=AnalysisResponse)
+def analyze_stock(symbol: str):
+    return IndicatorService.analyze_stock(symbol)
+@router.get("/{symbol}/macd", response_model=MACDResponse)
+def get_macd(
+    symbol: str,
+    interval: str = "1d",
+):
+    return MarketDataService.get_macd(
+        symbol,
         interval,
     )
