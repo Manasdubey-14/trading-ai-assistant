@@ -2,6 +2,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+
 DATABASE_URL = "sqlite:///./project_alpha.db"
 
 engine = create_engine(
@@ -16,3 +17,9 @@ SessionLocal = sessionmaker(
 )
 
 Base = declarative_base()
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

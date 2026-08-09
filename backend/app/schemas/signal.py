@@ -1,9 +1,11 @@
+
+from datetime import datetime
 from typing import Optional
 
 from pydantic import BaseModel
 
 
-class DecisionResponse(BaseModel):
+class SignalResponse(BaseModel):
     symbol: str
     signal: str
     confidence: float
@@ -15,3 +17,7 @@ class DecisionResponse(BaseModel):
     risk_reward: Optional[float] = None
 
     reasons: list[str]
+
+    created_at: Optional[datetime] = None
+
+

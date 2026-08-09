@@ -12,6 +12,11 @@ class PaperTradeCreate(BaseModel):
     stop_loss: float
     target: float
 
+    strategy: Optional[str] = None
+    timeframe: Optional[str] = None
+    confidence: Optional[float] = None
+    notes: Optional[str] = None
+
 
 class PaperTradeResponse(BaseModel):
     id: int
