@@ -1,5 +1,5 @@
 from app.services.market_data import MarketDataService
-
+from app.schemas.evidence import TechnicalEvidence
 from app.analysis.ema import calculate_ema
 from app.analysis.rsi import calculate_rsi
 from app.analysis.macd import calculate_macd
@@ -80,3 +80,57 @@ class IndicatorService:
             "rsi": rsi,
             "macd": macd,
         }
+
+    @staticmethod
+    def get_technical_evidence(symbol: str):
+
+        indicators = IndicatorService.get_all_indicators(symbol)
+
+        if "error" in indicators:
+            return indicators
+
+        ema_signal = indicators["ema"]["signal"]
+        rsi_signal = indicators["rsi"]["signal"]
+        macd_signal = indicators["macd"]["signal"]
+
+        # Technical direction
+        bullish_points = 0.0
+        bearish_points = 0.0
+
+        if ema_signal == "Bullish":
+            bullish_points += 30
+        else:
+            bearish_points += 30
+
+        if macd_signal == "Bullish":
+            bullish_points += 30
+        else:
+            bearish_points += 30
+
+        if rsi_signal == "Oversold":
+            bullish_points += 20
+        elif rsi_signal == "Overbought":
+            bearish_points += 20
+        else:
+            # Neutral RSI does not strongly favor either direction.
+            bullish_points += 10
+            bearish_points += 10
+
+        technical_score = bullish_points - bearish_points
+
+        if technical_score > 0:
+            direction = "Bullish"
+        elif technical_score < 0:
+            direction = "Bearish"
+        else:
+            direction = "Neutral"
+
+        strength = round(abs(technical_score) / 80, 2)
+
+        return TechnicalEvidence(
+            direction=direction,
+            strength=strength,
+            ema_signal=ema_signal,
+            rsi_signal=rsi_signal,
+            macd_signal=macd_signal,
+        )
