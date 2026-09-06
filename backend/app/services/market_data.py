@@ -55,6 +55,84 @@ class MarketDataService:
         return history.copy()
 
     @classmethod
+    def preload_history(
+        cls,
+        symbols: list[str],
+        period: str = "6mo",
+        interval: str = "1d",
+    ):
+        """
+        Download historical data for multiple symbols in one yfinance request
+        and populate the existing development cache.
+        """
+        if not symbols:
+            return
+
+        unique_symbols = list(dict.fromkeys(symbols))
+        cache_key_suffix = (period, interval)
+        now = time.time()
+
+        # Only download symbols that are not already cached.
+        symbols_to_download = []
+
+        with cls._cache_lock:
+            for symbol in unique_symbols:
+                cache_key = (symbol, *cache_key_suffix)
+                cached = cls._history_cache.get(cache_key)
+
+                if cached is not None:
+                    timestamp, _ = cached
+
+                    if now - timestamp < cls.CACHE_TTL:
+                        continue
+
+                symbols_to_download.append(symbol)
+
+        if not symbols_to_download:
+            return
+
+        data = yf.download(
+            symbols_to_download,
+            period=period,
+            interval=interval,
+            auto_adjust=False,
+            group_by="ticker",
+            threads=True,
+            progress=False,
+        )
+
+        if data.empty:
+            return
+
+        with cls._cache_lock:
+            for symbol in symbols_to_download:
+                try:
+                    # Multiple-symbol downloads return:
+                    # (Ticker, Price)
+                    if len(symbols_to_download) == 1:
+                        history = data.copy()
+                    else:
+                        if symbol not in data.columns.get_level_values(0):
+                            continue
+
+                        history = data[symbol].copy()
+
+                    if history.empty:
+                        continue
+
+                    cls._history_cache[
+                        (symbol, period, interval)
+                    ] = (
+                        now,
+                        history.copy(),
+                    )
+
+                except Exception as exc:
+                    print(
+                        f"[MarketData] Failed to cache {symbol}: {exc}"
+                    )
+                    
+    @classmethod
     def clear_cache(cls):
         """Clear development market-data cache."""
         with cls._cache_lock:
