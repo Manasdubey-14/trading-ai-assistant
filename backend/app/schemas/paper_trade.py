@@ -8,7 +8,10 @@ class PaperTradeCreate(BaseModel):
     symbol: str
     trade_type: str
     quantity: int
-    entry_price: float
+
+    # Backend fetches this automatically when omitted
+    entry_price: float | None = None
+
     stop_loss: float
     target: float
 
@@ -23,7 +26,10 @@ class PaperTradeResponse(BaseModel):
     symbol: str
     trade_type: str
     quantity: int
+
+    # A created paper trade always has an entry price
     entry_price: float
+
     exit_price: Optional[float]
     stop_loss: Optional[float]
     target: Optional[float]
@@ -38,6 +44,7 @@ class PaperTradeResponse(BaseModel):
 
     created_at: datetime
     closed_at: Optional[datetime]
+    exit_reason: Optional[str]
 
     class Config:
         from_attributes = True

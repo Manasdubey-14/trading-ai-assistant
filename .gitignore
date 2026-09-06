@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local trading databases and market data
+*.db
+*.db-*
+backend/data/

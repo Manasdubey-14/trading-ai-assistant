@@ -1,3 +1,6 @@
+from app.engine.opportunity_score import OpportunityScoreEngine
+
+
 class RankingEngine:
 
     @staticmethod
@@ -5,6 +8,6 @@ class RankingEngine:
 
         return sorted(
             signals,
-            key=lambda signal: signal.confidence,
+            key=lambda signal: OpportunityScoreEngine.calculate(signal)[0],
             reverse=True,
         )

@@ -56,3 +56,7 @@ class PaperTrade(Base):
         DateTime,
         nullable=True,
     )
+    exit_reason = Column(
+        String,
+        nullable=True,
+    )

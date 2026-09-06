@@ -1,3 +1,4 @@
+from app.services.settings_service import SettingsService
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
@@ -8,6 +9,9 @@ class PortfolioService:
 
     @staticmethod
     def get_portfolio_summary(db: Session):
+        settings = SettingsService.get_portfolio_settings(db)
+
+        initial_capital = settings.starting_capital
 
         INITIAL_CAPITAL = 70000
 
@@ -147,15 +151,16 @@ class PortfolioService:
         # -------------------------
 
         current_balance = (
-            INITIAL_CAPITAL
+            initial_capital
             + realized_pnl
         )
+
         return_percentage = (
-            realized_pnl / INITIAL_CAPITAL
+            realized_pnl / initial_capital
         ) * 100
 
         return {
-            "capital": INITIAL_CAPITAL,
+            "capital": round(initial_capital, 2),
 
             "current_balance": round(
                 current_balance, 2

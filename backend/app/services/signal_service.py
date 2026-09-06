@@ -57,7 +57,20 @@ class SignalService:
                     entry=signal.entry_price,
                     stop_loss=signal.stop_loss,
                     target=signal.target_price,
-                    risk_reward=None,
+                    risk_reward=(
+                        round(
+                            abs(signal.target_price - signal.entry_price)
+                            / abs(signal.entry_price - signal.stop_loss),
+                            2,
+                        )
+                        if (
+                            signal.entry_price is not None
+                            and signal.stop_loss is not None
+                            and signal.target_price is not None
+                            and signal.entry_price != signal.stop_loss
+                        )
+                        else None
+                    ),
                     reasons=signal.reason.split(", "),
                     created_at=signal.created_at,
                 )

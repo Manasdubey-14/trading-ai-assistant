@@ -1,22 +1,28 @@
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import Query
+from datetime import datetime
 
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.paper_trading.engine import PaperTradingEngine
+from app.schemas.close_trade import CloseTradeRequest
 from app.schemas.paper_trade import (
     PaperTradeCreate,
     PaperTradeResponse,
 )
-from app.schemas.close_trade import CloseTradeRequest
-from datetime import datetime
+from app.services.position_service import PositionService
+
 
 router = APIRouter(
     prefix="/paper-trade",
     tags=["Paper Trading"],
 )
+
+
+# =========================================================
+# GET ALL PAPER TRADES
+# =========================================================
+
 @router.get(
     "/",
     response_model=list[PaperTradeResponse],
@@ -29,8 +35,16 @@ def get_all_trades(
     from_date: datetime | None = Query(default=None),
     to_date: datetime | None = Query(default=None),
 
-    limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    limit: int = Query(
+        default=20,
+        ge=1,
+        le=100,
+    ),
+
+    offset: int = Query(
+        default=0,
+        ge=0,
+    ),
 
     db: Session = Depends(get_db),
 ):
@@ -45,27 +59,90 @@ def get_all_trades(
         offset=offset,
     )
 
-@router.post("/")
+
+# =========================================================
+# CREATE PAPER TRADE
+# =========================================================
+
+@router.post(
+    "/",
+    response_model=PaperTradeResponse,
+)
 def create_trade(
     trade: PaperTradeCreate,
     db: Session = Depends(get_db),
 ):
-    return PaperTradingEngine.create_trade(db, trade)
-@router.post("/{trade_id}/close")
+    try:
+
+        return PaperTradingEngine.create_trade(
+            db=db,
+            trade=trade,
+        )
+
+    except ValueError as exc:
+
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        )
+
+
+# =========================================================
+# MONITOR OPEN PAPER POSITIONS
+# =========================================================
+
+@router.post("/monitor")
+def monitor_paper_positions(
+    db: Session = Depends(get_db),
+):
+    try:
+
+        return PositionService.monitor_positions(
+            db
+        )
+
+    except Exception as exc:
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(exc),
+        )
+
+
+# =========================================================
+# CLOSE PAPER TRADE
+# =========================================================
+
+@router.post(
+    "/{trade_id}/close",
+    response_model=PaperTradeResponse,
+)
 def close_trade(
     trade_id: int,
     request: CloseTradeRequest,
     db: Session = Depends(get_db),
 ):
-    trade = PaperTradingEngine.close_trade(
-        db=db,
-        trade_id=trade_id,
-        exit_price=request.exit_price,
-    )
+    try:
 
-    if trade is None:
-        return {
-            "error": "Trade not found."
-        }
+        trade = PaperTradingEngine.close_trade(
+            db=db,
+            trade_id=trade_id,
+            exit_price=request.exit_price,
+            exit_reason="MANUAL",
+        )
 
-    return trade
+        if trade is None:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Paper trade not found.",
+            )
+
+        return trade
+
+    except ValueError as exc:
+
+        raise HTTPException(
+            status_code=422,
+            detail=str(exc),
+        )

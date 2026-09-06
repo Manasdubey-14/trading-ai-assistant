@@ -1,5 +1,6 @@
 class RiskEngine:
 
+    RISK_PERCENT = 0.01
     RISK_REWARD_RATIO = 2.0
 
     @staticmethod
@@ -10,7 +11,9 @@ class RiskEngine:
 
         if signal == "BUY":
 
-            stop_loss = current_price * 0.99
+            stop_loss = current_price * (
+                1 - RiskEngine.RISK_PERCENT
+            )
 
             target = current_price + (
                 (current_price - stop_loss)
@@ -19,7 +22,9 @@ class RiskEngine:
 
         elif signal == "SELL":
 
-            stop_loss = current_price * 1.01
+            stop_loss = current_price * (
+                1 + RiskEngine.RISK_PERCENT
+            )
 
             target = current_price - (
                 (stop_loss - current_price)
@@ -33,7 +38,22 @@ class RiskEngine:
 
         return {
             "entry": round(current_price, 2),
-            "stop_loss": round(stop_loss, 2) if stop_loss else None,
-            "target": round(target, 2) if target else None,
-            "risk_reward": RiskEngine.RISK_REWARD_RATIO,
+
+            "stop_loss": (
+                round(stop_loss, 2)
+                if stop_loss is not None
+                else None
+            ),
+
+            "target": (
+                round(target, 2)
+                if target is not None
+                else None
+            ),
+
+            "risk_reward": (
+                RiskEngine.RISK_REWARD_RATIO
+                if signal in ("BUY", "SELL")
+                else None
+            ),
         }

@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 class PositionResponse(BaseModel):
     id: int
+    paper_trade_id: int | None = None
 
     symbol: str
     side: str

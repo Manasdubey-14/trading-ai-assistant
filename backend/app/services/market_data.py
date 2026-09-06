@@ -1,3 +1,6 @@
+import time
+import threading
+
 import yfinance as yf
 
 from app.analysis.indicators import (
@@ -7,10 +10,56 @@ from app.analysis.indicators import (
 )
 
 
-
-
-
 class MarketDataService:
+
+    # Development cache.
+    # This MUST be replaced with market-session-aware caching
+    # before live trading / F&O integration.
+    _history_cache = {}
+    _cache_lock = threading.Lock()
+    CACHE_TTL = 300  # 5 minutes
+
+    @classmethod
+    def _get_cached_history(
+        cls,
+        symbol: str,
+        period: str = "6mo",
+        interval: str = "1d",
+    ):
+        cache_key = (symbol, period, interval)
+        now = time.time()
+
+        with cls._cache_lock:
+            cached = cls._history_cache.get(cache_key)
+
+            if cached is not None:
+                timestamp, history = cached
+
+                if now - timestamp < cls.CACHE_TTL:
+                    return history.copy()
+
+        stock = yf.Ticker(symbol)
+
+        history = stock.history(
+            period=period,
+            interval=interval,
+            auto_adjust=False,
+        )
+
+        with cls._cache_lock:
+            cls._history_cache[cache_key] = (
+                now,
+                history.copy(),
+            )
+
+        return history.copy()
+
+    @classmethod
+    def clear_cache(cls):
+        """Clear development market-data cache."""
+        with cls._cache_lock:
+            cls._history_cache.clear()
+
     @staticmethod
     def get_stock_data(symbol: str):
         """
@@ -30,8 +79,9 @@ class MarketDataService:
             "volume": info.get("volume"),
         }
 
-    @staticmethod
+    @classmethod
     def get_history(
+        cls,
         symbol: str,
         period: str = "6mo",
         interval: str = "1d",
@@ -39,11 +89,10 @@ class MarketDataService:
         """
         Get historical OHLCV data.
         """
-        stock = yf.Ticker(symbol)
-
-        history = stock.history(
-            period=period,
-            interval=interval,
+        history = cls._get_cached_history(
+            symbol,
+            period,
+            interval,
         )
 
         if history.empty:
@@ -87,23 +136,23 @@ class MarketDataService:
         )
 
         return history.to_dict(orient="records")
-    @staticmethod
+
+    @classmethod
     def get_historical_data(
+        cls,
         symbol: str,
         period: str = "6mo",
         interval: str = "1d",
     ):
-        stock = yf.Ticker(symbol)
-
-        history = stock.history(
-            period=period,
-            interval=interval,
+        return cls._get_cached_history(
+            symbol,
+            period,
+            interval,
         )
 
-        return history
-
-    @staticmethod
+    @classmethod
     def get_ema(
+        cls,
         symbol: str,
         period: int = 20,
         interval: str = "1d",
@@ -111,7 +160,7 @@ class MarketDataService:
         """
         Calculate the latest EMA value.
         """
-        history = MarketDataService.get_historical_data(
+        history = cls.get_historical_data(
             symbol,
             period="6mo",
             interval=interval,
@@ -142,8 +191,10 @@ class MarketDataService:
             "ema": round(float(latest["EMA"]), 2),
             "signal": signal,
         }
-    @staticmethod
+
+    @classmethod
     def get_rsi(
+        cls,
         symbol: str,
         period: int = 14,
         interval: str = "1d",
@@ -151,8 +202,7 @@ class MarketDataService:
         """
         Calculate the latest RSI value.
         """
-
-        history = MarketDataService.get_historical_data(
+        history = cls.get_historical_data(
             symbol,
             period="6mo",
             interval=interval,
@@ -174,10 +224,8 @@ class MarketDataService:
 
         if rsi_value > 70:
             signal = "Overbought"
-
         elif rsi_value < 30:
             signal = "Oversold"
-
         else:
             signal = "Neutral"
 
@@ -188,16 +236,17 @@ class MarketDataService:
             "rsi": rsi_value,
             "signal": signal,
         }
-    @staticmethod
+
+    @classmethod
     def get_macd(
+        cls,
         symbol: str,
         interval: str = "1d",
     ):
         """
         Calculate MACD indicator.
         """
-
-        history = MarketDataService.get_historical_data(
+        history = cls.get_historical_data(
             symbol,
             period="6mo",
             interval=interval,
@@ -218,10 +267,8 @@ class MarketDataService:
 
         if latest["MACD"] > latest["Signal"]:
             trade_signal = "Bullish"
-
         elif latest["MACD"] < latest["Signal"]:
             trade_signal = "Bearish"
-
         else:
             trade_signal = "Neutral"
 

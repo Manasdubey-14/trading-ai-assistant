@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-
+from app.engine.opportunity_score import OpportunityScoreEngine
 from app.schemas.opportunity import Opportunity
 from app.services.signal_service import SignalService
 
@@ -9,72 +9,35 @@ class OpportunityService:
     @staticmethod
     def calculate_score(signal):
 
-        score = 0.0
-
-        # Confidence contributes up to 50 points
-        score += signal.confidence * 0.50
-
-        # Trend
-        if signal.trend == "Bullish" and signal.signal == "BUY":
-            score += 20
-
-        elif signal.trend == "Bearish" and signal.signal == "SELL":
-            score += 20
-
-        # Risk / Reward
-        risk_reward = None
-
-        if (
-            signal.entry is not None
-            and signal.stop_loss is not None
-            and signal.target is not None
-        ):
-
-            risk = abs(signal.entry - signal.stop_loss)
-
-            reward = abs(signal.target - signal.entry)
-
-            if risk > 0:
-
-                risk_reward = reward / risk
-
-                if risk_reward >= 3:
-                    score += 20
-
-                elif risk_reward >= 2:
-                    score += 15
-
-                elif risk_reward >= 1.5:
-                    score += 10
-
-        return round(score, 2), risk_reward
-
+         return OpportunityScoreEngine.calculate(signal)
     @staticmethod
     def get_strength(score, signal):
 
-        if signal == "BUY":
+        if signal == "WAIT":
+            return "Wait"
 
-            if score >= 80:
-                return "Strong Buy"
+        if score >= 90:
+            return (
+                "Strong Buy"
+                if signal == "BUY"
+                else "Strong Sell"
+            )
 
-            elif score >= 60:
-                return "Buy"
+        if score >= 75:
+            return (
+                "Buy"
+                if signal == "BUY"
+                else "Sell"
+            )
 
-            else:
-                return "Weak Buy"
+        if score >= 60:
+            return (
+                "Watch Buy"
+                if signal == "BUY"
+                else "Watch Sell"
+            )
 
-        elif signal == "SELL":
-
-            if score >= 80:
-                return "Strong Sell"
-
-            elif score >= 60:
-                return "Sell"
-
-            else:
-                return "Weak Sell"
-
-        return "Wait"
+        return "Weak Signal"
 
     @staticmethod
     def get_top_opportunities(
@@ -89,6 +52,8 @@ class OpportunityService:
         opportunities = []
 
         for signal in signals:
+            if signal.signal == "WAIT":
+              continue
 
             score, risk_reward = (
                 OpportunityService.calculate_score(signal)

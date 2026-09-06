@@ -3,6 +3,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 
+
 DATABASE_URL = "sqlite:///./project_alpha.db"
 
 engine = create_engine(
@@ -23,3 +24,5 @@ def get_db():
         yield db
     finally:
         db.close()
+
+Base.metadata.create_all(bind=engine)

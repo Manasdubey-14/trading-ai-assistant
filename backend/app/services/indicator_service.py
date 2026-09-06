@@ -72,6 +72,10 @@ class IndicatorService:
 
         return {
             "symbol": symbol,
+            "current_price": round(
+                float(latest["Close"]),
+                2,
+            ),
             "ema": ema,
             "rsi": rsi,
             "macd": macd,
